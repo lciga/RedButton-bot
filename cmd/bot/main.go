@@ -74,6 +74,7 @@ func run(ctx context.Context) error {
 		services,
 		slog.Default(),
 		cfg.NotificationInterval,
+		cfg.TelegramInitTimeout,
 		cfg.AdminTelegramIDs,
 		cfg.BotStartDate,
 		cfg.BotEndDate,

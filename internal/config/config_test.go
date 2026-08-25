@@ -29,6 +29,7 @@ func TestLoad(t *testing.T) {
 			},
 			want: &Config{
 				TelegramBotToken:     "token",
+				TelegramInitTimeout:  30 * time.Second,
 				DatabaseDSN:          "host=localhost dbname=redbutton",
 				TasksDirectory:       "testdata/tasks",
 				BotStartDate:         time.Date(2026, time.September, 1, 0, 0, 0, 0, utcPlusFive),

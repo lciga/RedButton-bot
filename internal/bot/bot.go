@@ -41,6 +41,7 @@ func New(
 	services *service.Services,
 	logger *slog.Logger,
 	notificationInterval time.Duration,
+	telegramInitTimeout time.Duration,
 	adminTelegramIDs map[int64]struct{},
 	startsAt, endsAt time.Time,
 ) (*Bot, error) {
@@ -52,6 +53,9 @@ func New(
 	}
 	if notificationInterval <= 0 {
 		notificationInterval = 15 * time.Second
+	}
+	if telegramInitTimeout <= 0 {
+		telegramInitTimeout = 30 * time.Second
 	}
 
 	admins := make(map[int64]struct{}, len(adminTelegramIDs))
@@ -69,6 +73,7 @@ func New(
 	}
 	client, err := telegram.New(
 		token,
+		telegram.WithCheckInitTimeout(telegramInitTimeout),
 		telegram.WithDefaultHandler(application.handleUpdate),
 		telegram.WithErrorsHandler(func(err error) {
 			logger.Error("ошибка Telegram Bot API", "error", err)

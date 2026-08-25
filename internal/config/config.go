@@ -16,6 +16,7 @@ var utcPlusFive = time.FixedZone("UTC+5", 5*60*60)
 // Структура конфига бота
 type Config struct {
 	TelegramBotToken     string             // Токен бота
+	TelegramInitTimeout  time.Duration      // Таймаут проверки подключения к Telegram
 	DatabaseDSN          string             // Строка подключения к PostgreSQL
 	TasksDirectory       string             // Путь к директории с YAML-файлами тасков
 	BotStartDate         time.Time          // Дата и время начала работы бота
@@ -36,6 +37,16 @@ func Load() (*Config, error) {
 	cfg := &Config{}
 
 	cfg.TelegramBotToken = os.Getenv("TELEGRAM_BOT_TOKEN")
+	cfg.TelegramInitTimeout = 30 * time.Second
+	if value := os.Getenv("TELEGRAM_INIT_TIMEOUT"); value != "" {
+		cfg.TelegramInitTimeout, err = time.ParseDuration(value)
+		if err != nil {
+			return nil, fmt.Errorf("прочитать TELEGRAM_INIT_TIMEOUT: %w", err)
+		}
+	}
+	if cfg.TelegramInitTimeout <= 0 {
+		return nil, fmt.Errorf("TELEGRAM_INIT_TIMEOUT должен быть больше нуля")
+	}
 	cfg.DatabaseDSN = os.Getenv("DATABASE_DSN")
 	cfg.TasksDirectory = os.Getenv("TASKS_DIRECTORY")
 	if cfg.TasksDirectory == "" {
