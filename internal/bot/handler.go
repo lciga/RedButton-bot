@@ -230,7 +230,7 @@ func (b *Bot) answerCallback(
 		Text:            text,
 		ShowAlert:       showAlert,
 	}); err != nil {
-		b.logger.Error("не удалось ответить на callback", "error", err)
+		b.logger.ErrorContext(ctx, "Failed to answer callback query", "error", err)
 	}
 }
 
@@ -290,7 +290,13 @@ func (b *Bot) authenticate(ctx context.Context, user *models.User) (*dto.User, e
 }
 
 func (b *Bot) handleError(ctx context.Context, chatID int64, err error) {
-	b.logger.Error("ошибка обработки сообщения", "chat_id", chatID, "error", err)
+	b.logger.ErrorContext(
+		ctx,
+		"Failed to handle Telegram update",
+		"chat_id", chatID,
+		"error", err,
+		"error_chain", errorChain(err),
+	)
 
 	message := "Не удалось выполнить действие. Попробуйте позже."
 	switch {

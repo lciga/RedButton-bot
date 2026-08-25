@@ -82,7 +82,7 @@ func (b *Bot) sendText(ctx context.Context, chatID int64, text string, markup mo
 		Text:        text,
 		ReplyMarkup: markup,
 	}); err != nil {
-		b.logger.Error("не удалось отправить сообщение", "chat_id", chatID, "error", err)
+		b.logger.ErrorContext(ctx, "Failed to send Telegram message", "chat_id", chatID, "error", err)
 	}
 }
 

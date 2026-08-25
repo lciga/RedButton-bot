@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -75,13 +76,15 @@ func New(
 		startsAt:             startsAt,
 		endsAt:               endsAt,
 	}
+	httpClient := newHTTPClient(logger.With("component", "telegram"))
+	logger.Info("Initializing Telegram client", "timeout", telegramInitTimeout)
 	client, err := telegram.New(
 		token,
 		telegram.WithCheckInitTimeout(telegramInitTimeout),
-		telegram.WithHTTPClient(telegramPollTimeout, newHTTPClient()),
+		telegram.WithHTTPClient(telegramPollTimeout, httpClient),
 		telegram.WithDefaultHandler(application.handleUpdate),
 		telegram.WithErrorsHandler(func(err error) {
-			logger.Error("ошибка Telegram Bot API", "error", err)
+			logger.Error("Telegram Bot API error", "error", err, "error_chain", errorChain(err))
 		}),
 		telegram.WithAllowedUpdates(telegram.AllowedUpdates{
 			models.AllowedUpdateMessage,
@@ -91,12 +94,13 @@ func New(
 	if err != nil {
 		return nil, fmt.Errorf("создать клиент Telegram: %w", err)
 	}
+	logger.Info("Telegram client initialized")
 	application.client = client
 
 	return application, nil
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient(logger *slog.Logger) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
@@ -104,10 +108,29 @@ func newHTTPClient() *http.Client {
 		"Proxy-Connection": {"Keep-Alive"},
 		"User-Agent":       {"RedButton-bot/1.0"},
 	}
+	transport.OnProxyConnectResponse = func(
+		ctx context.Context,
+		proxyURL *url.URL,
+		request *http.Request,
+		response *http.Response,
+	) error {
+		logger.DebugContext(
+			ctx,
+			"Proxy CONNECT response received",
+			"proxy_host", proxyURL.Hostname(),
+			"target_host", request.Host,
+			"status_code", response.StatusCode,
+		)
+		return nil
+	}
+	logProxyConfiguration(logger, transport)
 
 	return &http.Client{
-		Transport: transport,
-		Timeout:   telegramHTTPTimeout,
+		Transport: &diagnosticTransport{
+			base:   transport,
+			logger: logger,
+		},
+		Timeout: telegramHTTPTimeout,
 	}
 }
 

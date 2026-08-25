@@ -3,16 +3,20 @@ package database
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"RedButton-bot/internal/database/migration"
+	applicationlogger "RedButton-bot/internal/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 // Функция подключения к PostgreSQL и проверки соединения.
 // Возвращает экземпляр GORM и ошибку.
-func Open(ctx context.Context, dsn string) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+func Open(ctx context.Context, dsn string, logger *slog.Logger) (*gorm.DB, error) {
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: applicationlogger.GORM(logger),
+	})
 	if err != nil {
 		return nil, fmt.Errorf("open postgres: %w", err)
 	}
