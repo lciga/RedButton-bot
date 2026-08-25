@@ -2,8 +2,10 @@ package bot
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 
@@ -14,12 +16,14 @@ import (
 )
 
 const (
-	buttonNewTask      = "🧩 Новая таска"
-	buttonRating       = "🏆 Рейтинг"
-	buttonAdmin        = "⚙️ Админка"
-	solvePrefix        = "solve:"
-	ratingPrefix       = "rating:"
-	adminPreviewPrefix = "admin:preview:"
+	buttonNewTask       = "🧩 Новая таска"
+	buttonRating        = "🏆 Рейтинг"
+	buttonAdmin         = "⚙️ Админка"
+	solvePrefix         = "solve:"
+	ratingPrefix        = "rating:"
+	adminPreviewPrefix  = "admin:preview:"
+	telegramPollTimeout = time.Minute
+	telegramHTTPTimeout = 90 * time.Second
 )
 
 // Структура Telegram-бота
@@ -74,6 +78,7 @@ func New(
 	client, err := telegram.New(
 		token,
 		telegram.WithCheckInitTimeout(telegramInitTimeout),
+		telegram.WithHTTPClient(telegramPollTimeout, newHTTPClient()),
 		telegram.WithDefaultHandler(application.handleUpdate),
 		telegram.WithErrorsHandler(func(err error) {
 			logger.Error("ошибка Telegram Bot API", "error", err)
@@ -89,6 +94,17 @@ func New(
 	application.client = client
 
 	return application, nil
+}
+
+func newHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ForceAttemptHTTP2 = false
+	transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+
+	return &http.Client{
+		Transport: transport,
+		Timeout:   telegramHTTPTimeout,
+	}
 }
 
 func (b *Bot) isAdmin(telegramUserID int64) bool {
