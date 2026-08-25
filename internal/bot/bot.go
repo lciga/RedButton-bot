@@ -100,6 +100,10 @@ func newHTTPClient() *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	transport.ProxyConnectHeader = http.Header{
+		"Proxy-Connection": {"Keep-Alive"},
+		"User-Agent":       {"RedButton-bot/1.0"},
+	}
 
 	return &http.Client{
 		Transport: transport,
