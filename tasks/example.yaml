@@ -1,0 +1,13 @@
+title: Тестовый таск
+description: |
+  Это тестовый таск для проверки загрузки YAML-файлов,
+  отправки вложений и начисления очков.
+flag: redbutton{test_flag}
+maximum_points: 1000
+minimum_points: 100
+decay: 25
+starts_at: "2026-09-01T12:00:00+05:00"
+file:
+  path: files/example.txt
+  name: example.txt
+  mime_type: text/plain
