@@ -1,0 +1,68 @@
+name: Test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check formatting
+        run: test -z "$(gofmt -l .)"
+      - name: Vet
+        run: go vet ./...
+      - name: Unit tests with race detector
+        run: go test -race -coverprofile=coverage.out ./...
+      - name: Telegram smoke test
+        run: go test -count=1 -tags=smoke ./internal/bot
+      - uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage
+          path: coverage.out
+
+  postgres-and-e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: redbutton_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d redbutton_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      TEST_DATABASE_DSN: postgres://postgres:postgres@localhost:5432/redbutton_test?sslmode=disable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: PostgreSQL integration tests
+        run: go test -count=1 -tags=integration ./internal/repository/postgres
+      - name: Complete user flow
+        run: go test -count=1 -tags=e2e ./tests/e2e
+
+  image-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -t redbutton-bot:test .
+      - name: Inspect non-root image user
+        run: test "$(docker image inspect redbutton-bot:test --format '{{.Config.User}}')" = "redbutton"

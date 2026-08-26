@@ -151,3 +151,13 @@ func TestLoadTimeZoneUTCOffset(t *testing.T) {
 		t.Errorf("offset = %d, want %d", offset, 5*60*60+30*60)
 	}
 }
+
+func TestLoadTimeZoneRejectsInvalidOffsets(t *testing.T) {
+	for _, value := range []string{"UTC+15", "UTC-14:01", "UTC+05:60"} {
+		t.Run(value, func(t *testing.T) {
+			if _, err := loadTimeZone(value); err == nil {
+				t.Fatalf("loadTimeZone(%q) returned no error", value)
+			}
+		})
+	}
+}

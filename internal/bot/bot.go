@@ -51,6 +51,28 @@ func New(
 	adminTelegramIDs map[int64]struct{},
 	startsAt, endsAt time.Time,
 ) (*Bot, error) {
+	return newWithOptions(
+		token,
+		services,
+		logger,
+		notificationInterval,
+		telegramInitTimeout,
+		adminTelegramIDs,
+		startsAt,
+		endsAt,
+	)
+}
+
+func newWithOptions(
+	token string,
+	services *service.Services,
+	logger *slog.Logger,
+	notificationInterval time.Duration,
+	telegramInitTimeout time.Duration,
+	adminTelegramIDs map[int64]struct{},
+	startsAt, endsAt time.Time,
+	extraOptions ...telegram.Option,
+) (*Bot, error) {
 	if services == nil {
 		return nil, fmt.Errorf("create Telegram bot: services are not configured")
 	}
@@ -79,8 +101,7 @@ func New(
 	}
 	httpClient := newHTTPClient(logger.With("component", "telegram"))
 	logger.Debug("Initializing Telegram client", "timeout", telegramInitTimeout)
-	client, err := telegram.New(
-		token,
+	options := []telegram.Option{
 		telegram.WithCheckInitTimeout(telegramInitTimeout),
 		telegram.WithHTTPClient(telegramPollTimeout, httpClient),
 		telegram.WithDefaultHandler(application.handleUpdate),
@@ -91,7 +112,9 @@ func New(
 			models.AllowedUpdateMessage,
 			models.AllowedUpdateCallbackQuery,
 		}),
-	)
+	}
+	options = append(options, extraOptions...)
+	client, err := telegram.New(token, options...)
 	if err != nil {
 		return nil, fmt.Errorf("create Telegram client: %w", err)
 	}

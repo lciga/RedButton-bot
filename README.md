@@ -558,3 +558,9 @@ go fmt ./...
 ```bash
 go test ./... && go vet ./...
 ```
+
+Полный тестовый цикл перед production, включая unit, race, smoke, PostgreSQL integration, E2E и сборку Docker image, описан в [TESTING.md](TESTING.md). Запуск всего контура:
+
+```bash
+make test-full
+```
