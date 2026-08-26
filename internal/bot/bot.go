@@ -104,6 +104,12 @@ func newHTTPClient(logger *slog.Logger) *http.Client {
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.ForceAttemptHTTP2 = false
 	transport.TLSNextProto = make(map[string]func(string, *tls.Conn) http.RoundTripper)
+	if transport.TLSClientConfig == nil {
+		transport.TLSClientConfig = &tls.Config{}
+	} else {
+		transport.TLSClientConfig = transport.TLSClientConfig.Clone()
+	}
+	transport.TLSClientConfig.NextProtos = []string{"http/1.1"}
 	transport.ProxyConnectHeader = http.Header{
 		"Proxy-Connection": {"Keep-Alive"},
 		"User-Agent":       {"RedButton-bot/1.0"},

@@ -26,6 +26,7 @@ type requestTrace struct {
 	connectError         error
 	tlsHandshakesStarted int
 	tlsHandshakesDone    int
+	tlsProtocols         []string
 	tlsError             error
 	requestWritten       bool
 	writeError           error
@@ -90,9 +91,10 @@ func (t *requestTrace) clientTrace() *httptrace.ClientTrace {
 			t.tlsHandshakesStarted++
 			t.mutex.Unlock()
 		},
-		TLSHandshakeDone: func(_ tls.ConnectionState, err error) {
+		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
 			t.mutex.Lock()
 			t.tlsHandshakesDone++
+			t.tlsProtocols = append(t.tlsProtocols, state.NegotiatedProtocol)
 			t.tlsError = err
 			t.mutex.Unlock()
 		},
@@ -121,6 +123,7 @@ func (t *requestTrace) attributes() []any {
 		"connect_error", t.connectError,
 		"tls_handshakes_started", t.tlsHandshakesStarted,
 		"tls_handshakes_done", t.tlsHandshakesDone,
+		"tls_protocols", strings.Join(t.tlsProtocols, ","),
 		"tls_error", t.tlsError,
 		"request_written", t.requestWritten,
 		"write_error", t.writeError,
