@@ -2,7 +2,6 @@ package bot
 
 import (
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	applicationlogger "RedButton-bot/internal/logger"
 )
 
 type diagnosticTransport struct {
@@ -20,14 +21,12 @@ type diagnosticTransport struct {
 
 type requestTrace struct {
 	mutex                sync.Mutex
-	dnsCompleted         bool
 	connectAddress       string
 	connectCompleted     bool
 	connectError         error
 	tlsHandshakesStarted int
 	tlsHandshakesDone    int
 	tlsProtocols         []string
-	tlsError             error
 	requestWritten       bool
 	writeError           error
 	firstResponseByte    bool
@@ -42,8 +41,7 @@ func (t *diagnosticTransport) RoundTrip(request *http.Request) (*http.Response, 
 	response, err := t.base.RoundTrip(request)
 	attributes := append(
 		[]any{
-			"method", request.Method,
-			"telegram_method", telegramMethod(request.URL),
+			"operation", telegramMethod(request.URL),
 			"duration", time.Since(startedAt),
 		},
 		trace.attributes()...,
@@ -53,11 +51,9 @@ func (t *diagnosticTransport) RoundTrip(request *http.Request) (*http.Response, 
 		attributes = append(
 			attributes,
 			"error", err,
-			"error_type", fmt.Sprintf("%T", err),
-			"error_chain", errorChain(err),
 		)
 		t.logger.ErrorContext(request.Context(), "Telegram HTTP request failed", attributes...)
-		return nil, err
+		return nil, applicationlogger.MarkLogged(err)
 	}
 
 	t.logger.DebugContext(
@@ -70,11 +66,6 @@ func (t *diagnosticTransport) RoundTrip(request *http.Request) (*http.Response, 
 
 func (t *requestTrace) clientTrace() *httptrace.ClientTrace {
 	return &httptrace.ClientTrace{
-		DNSDone: func(httptrace.DNSDoneInfo) {
-			t.mutex.Lock()
-			t.dnsCompleted = true
-			t.mutex.Unlock()
-		},
 		ConnectStart: func(_, address string) {
 			t.mutex.Lock()
 			t.connectAddress = address
@@ -91,11 +82,10 @@ func (t *requestTrace) clientTrace() *httptrace.ClientTrace {
 			t.tlsHandshakesStarted++
 			t.mutex.Unlock()
 		},
-		TLSHandshakeDone: func(state tls.ConnectionState, err error) {
+		TLSHandshakeDone: func(state tls.ConnectionState, _ error) {
 			t.mutex.Lock()
 			t.tlsHandshakesDone++
 			t.tlsProtocols = append(t.tlsProtocols, state.NegotiatedProtocol)
-			t.tlsError = err
 			t.mutex.Unlock()
 		},
 		WroteRequest: func(info httptrace.WroteRequestInfo) {
@@ -117,38 +107,33 @@ func (t *requestTrace) attributes() []any {
 	defer t.mutex.Unlock()
 
 	return []any{
-		"dns_completed", t.dnsCompleted,
 		"connect_address", t.connectAddress,
-		"connect_completed", t.connectCompleted,
-		"connect_error", t.connectError,
-		"tls_handshakes_started", t.tlsHandshakesStarted,
-		"tls_handshakes_done", t.tlsHandshakesDone,
+		"connected", t.connectCompleted && t.connectError == nil,
+		"tls_handshakes", fmt.Sprintf("%d/%d", t.tlsHandshakesDone, t.tlsHandshakesStarted),
 		"tls_protocols", strings.Join(t.tlsProtocols, ","),
-		"tls_error", t.tlsError,
-		"request_written", t.requestWritten,
-		"write_error", t.writeError,
-		"first_response_byte", t.firstResponseByte,
+		"request_written", t.requestWritten && t.writeError == nil,
+		"response_started", t.firstResponseByte,
 	}
 }
 
 func logProxyConfiguration(logger *slog.Logger, transport *http.Transport) {
 	request := &http.Request{URL: &url.URL{Scheme: "https", Host: "api.telegram.org"}}
 	proxyURL, err := transport.Proxy(request)
-	logger.Info("Telegram HTTP transport configured", proxyAttributes(proxyURL, err)...)
+	logger.Debug("Telegram transport configured", proxyAttributes(proxyURL, err)...)
 }
 
 func proxyAttributes(proxyURL *url.URL, err error) []any {
-	attributes := []any{"proxy_enabled", proxyURL != nil, "proxy_error", err}
+	attributes := make([]any, 0, 4)
+	if err != nil {
+		attributes = append(attributes, "proxy_error", err)
+	}
 	if proxyURL == nil {
-		return attributes
+		return append(attributes, "proxy", "direct")
 	}
 
 	return append(
 		attributes,
-		"proxy_scheme", proxyURL.Scheme,
-		"proxy_host", proxyURL.Hostname(),
-		"proxy_port", proxyURL.Port(),
-		"proxy_auth_configured", proxyURL.User != nil,
+		"proxy", fmt.Sprintf("%s://%s", proxyURL.Scheme, proxyURL.Host),
 	)
 }
 
@@ -158,15 +143,6 @@ func telegramMethod(requestURL *url.URL) string {
 		return path[index+1:]
 	}
 	return path
-}
-
-func errorChain(err error) string {
-	chain := make([]string, 0, 4)
-	for err != nil {
-		chain = append(chain, fmt.Sprintf("%T", err))
-		err = errors.Unwrap(err)
-	}
-	return strings.Join(chain, " -> ")
 }
 
 var _ http.RoundTripper = (*diagnosticTransport)(nil)

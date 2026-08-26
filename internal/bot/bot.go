@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	applicationlogger "RedButton-bot/internal/logger"
 	"RedButton-bot/internal/service"
 	telegram "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -51,7 +52,7 @@ func New(
 	startsAt, endsAt time.Time,
 ) (*Bot, error) {
 	if services == nil {
-		return nil, fmt.Errorf("создать Telegram-бота: сервисы не заданы")
+		return nil, fmt.Errorf("create Telegram bot: services are not configured")
 	}
 	if logger == nil {
 		logger = slog.Default()
@@ -77,14 +78,14 @@ func New(
 		endsAt:               endsAt,
 	}
 	httpClient := newHTTPClient(logger.With("component", "telegram"))
-	logger.Info("Initializing Telegram client", "timeout", telegramInitTimeout)
+	logger.Debug("Initializing Telegram client", "timeout", telegramInitTimeout)
 	client, err := telegram.New(
 		token,
 		telegram.WithCheckInitTimeout(telegramInitTimeout),
 		telegram.WithHTTPClient(telegramPollTimeout, httpClient),
 		telegram.WithDefaultHandler(application.handleUpdate),
 		telegram.WithErrorsHandler(func(err error) {
-			logger.Error("Telegram Bot API error", "error", err, "error_chain", errorChain(err))
+			application.logError(context.Background(), "Telegram Bot API request failed", err)
 		}),
 		telegram.WithAllowedUpdates(telegram.AllowedUpdates{
 			models.AllowedUpdateMessage,
@@ -92,9 +93,8 @@ func New(
 		}),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("создать клиент Telegram: %w", err)
+		return nil, fmt.Errorf("create Telegram client: %w", err)
 	}
-	logger.Info("Telegram client initialized")
 	application.client = client
 
 	return application, nil
@@ -138,6 +138,14 @@ func newHTTPClient(logger *slog.Logger) *http.Client {
 		},
 		Timeout: telegramHTTPTimeout,
 	}
+}
+
+func (b *Bot) logError(ctx context.Context, message string, err error, attributes ...any) {
+	if applicationlogger.IsLogged(err) {
+		return
+	}
+	attributes = append(attributes, "error", err)
+	b.logger.ErrorContext(ctx, message, attributes...)
 }
 
 func (b *Bot) isAdmin(telegramUserID int64) bool {

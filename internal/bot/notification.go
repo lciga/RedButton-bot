@@ -36,7 +36,7 @@ func (b *Bot) runNotifications(ctx context.Context) {
 func (b *Bot) nextTaskActivation(ctx context.Context) *time.Time {
 	activation, err := b.services.Notifications.GetNextStartsAt(ctx)
 	if err != nil {
-		b.logger.ErrorContext(ctx, "Failed to get next task activation time", "error", err)
+		b.logError(ctx, "Failed to get next task activation time", err)
 		return nil
 	}
 
@@ -73,7 +73,7 @@ func (b *Bot) sendPendingNotifications(ctx context.Context) {
 	for {
 		notifications, err := b.services.Notifications.GetPending(ctx, batchSize)
 		if err != nil {
-			b.logger.ErrorContext(ctx, "Failed to get pending notifications", "error", err)
+			b.logError(ctx, "Failed to get pending notifications", err)
 			return
 		}
 		if len(notifications) == 0 {
@@ -83,11 +83,12 @@ func (b *Bot) sendPendingNotifications(ctx context.Context) {
 		sent := 0
 		for _, notification := range notifications {
 			if err := b.sendTask(ctx, notification.TelegramUserID, notification.Task, true); err != nil {
-				b.logger.Error(
+				b.logError(
+					ctx,
 					"Failed to send task notification",
+					err,
 					"telegram_user_id", notification.TelegramUserID,
 					"task_id", notification.Task.ID,
-					"error", err,
 				)
 				continue
 			}
@@ -96,11 +97,12 @@ func (b *Bot) sendPendingNotifications(ctx context.Context) {
 				notification.UserID,
 				notification.Task.ID,
 			); err != nil {
-				b.logger.Error(
+				b.logError(
+					ctx,
 					"Failed to mark task notification as sent",
+					err,
 					"telegram_user_id", notification.TelegramUserID,
 					"task_id", notification.Task.ID,
-					"error", err,
 				)
 				continue
 			}

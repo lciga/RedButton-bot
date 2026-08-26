@@ -41,11 +41,11 @@ func Load() (*Config, error) {
 	if value := os.Getenv("TELEGRAM_INIT_TIMEOUT"); value != "" {
 		cfg.TelegramInitTimeout, err = time.ParseDuration(value)
 		if err != nil {
-			return nil, fmt.Errorf("прочитать TELEGRAM_INIT_TIMEOUT: %w", err)
+			return nil, fmt.Errorf("parse TELEGRAM_INIT_TIMEOUT: %w", err)
 		}
 	}
 	if cfg.TelegramInitTimeout <= 0 {
-		return nil, fmt.Errorf("TELEGRAM_INIT_TIMEOUT должен быть больше нуля")
+		return nil, fmt.Errorf("TELEGRAM_INIT_TIMEOUT must be greater than zero")
 	}
 	cfg.DatabaseDSN = os.Getenv("DATABASE_DSN")
 	cfg.TasksDirectory = os.Getenv("TASKS_DIRECTORY")
@@ -61,7 +61,7 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 	if !cfg.BotEndDate.After(cfg.BotStartDate) {
-		return nil, fmt.Errorf("время окончания работы бота должно быть позже времени начала")
+		return nil, fmt.Errorf("bot end time must be later than start time")
 	}
 	cfg.TaskExpire, err = time.ParseDuration(os.Getenv("TASK_EXPIRE"))
 	if err != nil {
@@ -92,7 +92,7 @@ func parseTelegramIDs(value string) (map[int64]struct{}, error) {
 
 		telegramID, err := strconv.ParseInt(item, 10, 64)
 		if err != nil || telegramID <= 0 {
-			return nil, fmt.Errorf("некорректный Telegram ID администратора %q", item)
+			return nil, fmt.Errorf("invalid administrator Telegram ID %q", item)
 		}
 		result[telegramID] = struct{}{}
 	}

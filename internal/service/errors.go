@@ -3,7 +3,7 @@ package service
 import "errors"
 
 var (
-	ErrInvalidInput    = errors.New("переданы некорректные данные")
-	ErrUserInactive    = errors.New("пользователь заблокирован")
-	ErrTaskUnavailable = errors.New("таск недоступен для решения")
+	ErrInvalidInput    = errors.New("invalid input")
+	ErrUserInactive    = errors.New("user is inactive")
+	ErrTaskUnavailable = errors.New("task is unavailable")
 )

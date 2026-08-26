@@ -44,7 +44,7 @@ func (r *notificationRepository) ListPending(
 		Scan(&notifications).
 		Error
 	if err != nil {
-		return nil, fmt.Errorf("получить уведомления: %w", err)
+		return nil, fmt.Errorf("list notifications: %w", err)
 	}
 
 	return notifications, nil
@@ -67,7 +67,7 @@ func (r *notificationRepository) MarkSent(
 		Create(&notification).
 		Error
 	if err != nil {
-		return fmt.Errorf("сохранить уведомление: %w", err)
+		return fmt.Errorf("save notification: %w", err)
 	}
 
 	return nil

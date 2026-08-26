@@ -32,7 +32,7 @@ func (s *Store) WithinTransaction(ctx context.Context, fn func(repository.Reposi
 		return fn(newRepositories(tx))
 	})
 	if err != nil {
-		return fmt.Errorf("выполнить транзакцию: %w", err)
+		return fmt.Errorf("execute transaction: %w", err)
 	}
 
 	return nil

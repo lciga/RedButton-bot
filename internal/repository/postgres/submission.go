@@ -18,7 +18,7 @@ type submissionRepository struct {
 // Возвращает ошибку сохранения.
 func (r *submissionRepository) Create(ctx context.Context, submission *model.Submission) error {
 	if err := r.db.WithContext(ctx).Create(submission).Error; err != nil {
-		return fmt.Errorf("сохранить попытку: %w", err)
+		return fmt.Errorf("save submission: %w", err)
 	}
 
 	return nil
@@ -34,7 +34,7 @@ func (r *submissionRepository) HasCorrect(ctx context.Context, userID, taskID uu
 		Count(&count).
 		Error
 	if err != nil {
-		return false, fmt.Errorf("проверить решение таска: %w", err)
+		return false, fmt.Errorf("check task solution: %w", err)
 	}
 
 	return count != 0, nil
@@ -50,7 +50,7 @@ func (r *submissionRepository) CountCorrect(ctx context.Context, taskID uuid.UUI
 		Count(&count).
 		Error
 	if err != nil {
-		return 0, fmt.Errorf("посчитать решения таска: %w", err)
+		return 0, fmt.Errorf("count task solutions: %w", err)
 	}
 
 	return count, nil

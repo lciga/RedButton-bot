@@ -39,7 +39,7 @@ func (s *TaskService) Sync(
 	for _, definition := range definitions {
 		if definition.StartsAt.Before(botStartsAt) || !definition.StartsAt.Before(botEndsAt) {
 			return fmt.Errorf(
-				"%w: время открытия таска %q находится вне периода работы бота",
+				"%w: task %q starts outside the bot availability period",
 				ErrInvalidInput,
 				definition.Slug,
 			)

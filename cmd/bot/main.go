@@ -29,7 +29,9 @@ func main() {
 	defer cancel()
 
 	if err := run(ctx, logger); err != nil {
-		logger.Error("Application stopped with an error", "error", err, "error_type", fmt.Sprintf("%T", err))
+		if !applicationlogger.IsLogged(err) {
+			logger.Error("Application failed", "error", err)
+		}
 		os.Exit(1)
 	}
 }
@@ -37,30 +39,20 @@ func main() {
 func run(ctx context.Context, logger *slog.Logger) error {
 	cfg, err := config.Load()
 	if err != nil {
-		return fmt.Errorf("загрузить конфиг: %w", err)
+		return fmt.Errorf("load configuration: %w", err)
 	}
-	logger.Info(
-		"Configuration loaded",
-		"tasks_directory", cfg.TasksDirectory,
-		"bot_starts_at", cfg.BotStartDate,
-		"bot_ends_at", cfg.BotEndDate,
-		"telegram_init_timeout", cfg.TelegramInitTimeout,
-	)
 	tasks, err := taskconfig.Load(cfg.TasksDirectory)
 	if err != nil {
-		return fmt.Errorf("загрузить таски: %w", err)
+		return fmt.Errorf("load task configuration: %w", err)
 	}
-	logger.Info("Task configuration loaded", "tasks_count", len(tasks))
 
-	logger.Info("Connecting to PostgreSQL")
 	db, err := database.Open(ctx, cfg.DatabaseDSN, logger)
 	if err != nil {
 		return err
 	}
-	logger.Info("PostgreSQL connection established")
 	sqlDB, err := db.DB()
 	if err != nil {
-		return fmt.Errorf("получить соединение PostgreSQL: %w", err)
+		return fmt.Errorf("get PostgreSQL connection: %w", err)
 	}
 	defer func() {
 		if err := sqlDB.Close(); err != nil {
@@ -71,7 +63,6 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err := database.Migrate(ctx, db); err != nil {
 		return err
 	}
-	logger.Info("Database migrations applied")
 
 	store := postgresrepository.New(db)
 	services := service.New(store.Repositories(), store, nil, cfg.AdminTelegramIDs)
@@ -82,9 +73,8 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		cfg.BotStartDate,
 		cfg.BotEndDate,
 	); err != nil {
-		return fmt.Errorf("синхронизировать таски: %w", err)
+		return fmt.Errorf("synchronize tasks: %w", err)
 	}
-	logger.Info("Tasks synchronized with database", "tasks_count", len(tasks))
 	telegramBot, err := applicationbot.New(
 		cfg.TelegramBotToken,
 		services,
@@ -99,7 +89,13 @@ func run(ctx context.Context, logger *slog.Logger) error {
 		return err
 	}
 
-	logger.Info("Telegram bot started")
+	logger.Info(
+		"Application started",
+		"tasks", len(tasks),
+		"admins", len(cfg.AdminTelegramIDs),
+		"starts_at", cfg.BotStartDate,
+		"ends_at", cfg.BotEndDate,
+	)
 	telegramBot.Start(ctx)
 	return nil
 }

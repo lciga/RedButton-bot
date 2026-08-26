@@ -3,6 +3,7 @@ package logger
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,6 +12,32 @@ import (
 	"sync"
 	"time"
 )
+
+type loggedError struct {
+	err error
+}
+
+func (e *loggedError) Error() string {
+	return e.err.Error()
+}
+
+func (e *loggedError) Unwrap() error {
+	return e.err
+}
+
+// Функция отметки уже записанной в лог ошибки
+func MarkLogged(err error) error {
+	if err == nil || IsLogged(err) {
+		return err
+	}
+	return &loggedError{err: err}
+}
+
+// Функция проверки наличия ошибки в логах
+func IsLogged(err error) bool {
+	var target *loggedError
+	return errors.As(err, &target)
+}
 
 // Структура форматтера логов
 type handler struct {

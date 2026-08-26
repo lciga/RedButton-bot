@@ -40,7 +40,7 @@ type task struct {
 func Load(directory string) ([]dto.TaskDefinition, error) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
-		return nil, fmt.Errorf("прочитать директорию тасков: %w", err)
+		return nil, fmt.Errorf("read tasks directory: %w", err)
 	}
 
 	paths := make([]string, 0, len(entries))
@@ -54,7 +54,7 @@ func Load(directory string) ([]dto.TaskDefinition, error) {
 		}
 	}
 	if len(paths) == 0 {
-		return nil, fmt.Errorf("в директории %q отсутствуют YAML-файлы тасков", directory)
+		return nil, fmt.Errorf("tasks directory %q contains no YAML files", directory)
 	}
 	sort.Strings(paths)
 
@@ -67,7 +67,7 @@ func Load(directory string) ([]dto.TaskDefinition, error) {
 		}
 		if previous, exists := slugs[definition.Slug]; exists {
 			return nil, fmt.Errorf(
-				"идентификатор таска %q повторяется в %q и %q",
+				"task slug %q is duplicated in %q and %q",
 				definition.Slug,
 				previous,
 				path,
@@ -83,7 +83,7 @@ func Load(directory string) ([]dto.TaskDefinition, error) {
 func loadFile(path string) (dto.TaskDefinition, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return dto.TaskDefinition{}, fmt.Errorf("открыть YAML-файл %q: %w", path, err)
+		return dto.TaskDefinition{}, fmt.Errorf("open YAML file %q: %w", path, err)
 	}
 	defer file.Close()
 
@@ -91,12 +91,12 @@ func loadFile(path string) (dto.TaskDefinition, error) {
 	decoder := yaml.NewDecoder(file)
 	decoder.KnownFields(true)
 	if err := decoder.Decode(&source); err != nil {
-		return dto.TaskDefinition{}, fmt.Errorf("прочитать YAML-файл %q: %w", path, err)
+		return dto.TaskDefinition{}, fmt.Errorf("decode YAML file %q: %w", path, err)
 	}
 
 	definition, err := mapTask(path, source)
 	if err != nil {
-		return dto.TaskDefinition{}, fmt.Errorf("проверить YAML-файл %q: %w", path, err)
+		return dto.TaskDefinition{}, fmt.Errorf("validate YAML file %q: %w", path, err)
 	}
 
 	return definition, nil
@@ -108,30 +108,30 @@ func mapTask(path string, source task) (dto.TaskDefinition, error) {
 		slug = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
 	}
 	if !slugPattern.MatchString(slug) {
-		return dto.TaskDefinition{}, fmt.Errorf("некорректный slug %q", slug)
+		return dto.TaskDefinition{}, fmt.Errorf("invalid task slug %q", slug)
 	}
 	if strings.TrimSpace(source.Title) == "" {
-		return dto.TaskDefinition{}, errors.New("название таска не задано")
+		return dto.TaskDefinition{}, errors.New("task title is required")
 	}
 	if strings.TrimSpace(source.Description) == "" {
-		return dto.TaskDefinition{}, errors.New("описание таска не задано")
+		return dto.TaskDefinition{}, errors.New("task description is required")
 	}
 	if source.Flag == "" {
-		return dto.TaskDefinition{}, errors.New("флаг таска не задан")
+		return dto.TaskDefinition{}, errors.New("task flag is required")
 	}
 	if source.MaximumPoints <= 0 {
-		return dto.TaskDefinition{}, errors.New("максимальная стоимость должна быть больше нуля")
+		return dto.TaskDefinition{}, errors.New("maximum points must be greater than zero")
 	}
 	if source.MinimumPoints < 0 || source.MinimumPoints > source.MaximumPoints {
-		return dto.TaskDefinition{}, errors.New("минимальная стоимость должна быть от нуля до максимальной")
+		return dto.TaskDefinition{}, errors.New("minimum points must be between zero and maximum points")
 	}
 	if source.Decay <= 0 {
-		return dto.TaskDefinition{}, errors.New("распад должен быть больше нуля")
+		return dto.TaskDefinition{}, errors.New("decay must be greater than zero")
 	}
 
 	startsAt, err := time.Parse(time.RFC3339, source.StartsAt)
 	if err != nil {
-		return dto.TaskDefinition{}, fmt.Errorf("некорректное время открытия: %w", err)
+		return dto.TaskDefinition{}, fmt.Errorf("invalid task start time: %w", err)
 	}
 
 	definition := dto.TaskDefinition{
@@ -157,7 +157,7 @@ func mapTask(path string, source task) (dto.TaskDefinition, error) {
 
 func mapFile(directory string, source taskFile) (dto.TaskFileDefinition, error) {
 	if strings.TrimSpace(source.Path) == "" {
-		return dto.TaskFileDefinition{}, errors.New("путь к файлу таска не задан")
+		return dto.TaskFileDefinition{}, errors.New("task file path is required")
 	}
 
 	storagePath := source.Path
@@ -166,14 +166,14 @@ func mapFile(directory string, source taskFile) (dto.TaskFileDefinition, error) 
 	}
 	storagePath, err := filepath.Abs(storagePath)
 	if err != nil {
-		return dto.TaskFileDefinition{}, fmt.Errorf("получить полный путь к файлу: %w", err)
+		return dto.TaskFileDefinition{}, fmt.Errorf("resolve task file path: %w", err)
 	}
 	info, err := os.Stat(storagePath)
 	if err != nil {
-		return dto.TaskFileDefinition{}, fmt.Errorf("проверить файл таска: %w", err)
+		return dto.TaskFileDefinition{}, fmt.Errorf("inspect task file: %w", err)
 	}
 	if !info.Mode().IsRegular() {
-		return dto.TaskFileDefinition{}, fmt.Errorf("путь %q не является файлом", storagePath)
+		return dto.TaskFileDefinition{}, fmt.Errorf("path %q is not a regular file", storagePath)
 	}
 
 	fileName := strings.TrimSpace(source.Name)

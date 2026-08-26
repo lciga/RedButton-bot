@@ -33,7 +33,7 @@ func (r *userRepository) Upsert(ctx context.Context, user *model.User) error {
 		Create(user).
 		Error
 	if err != nil {
-		return fmt.Errorf("сохранить пользователя: %w", err)
+		return fmt.Errorf("save user: %w", err)
 	}
 
 	return nil
@@ -50,7 +50,7 @@ func (r *userRepository) GetByTelegramID(ctx context.Context, telegramUserID int
 		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("получить пользователя: %w", err)
+		return nil, fmt.Errorf("get user: %w", err)
 	}
 
 	return &user, nil

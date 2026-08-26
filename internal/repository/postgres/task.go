@@ -43,7 +43,7 @@ func (r *taskRepository) Sync(ctx context.Context, tasks []model.Task) error {
 		return nil
 	})
 	if err != nil {
-		return fmt.Errorf("синхронизировать таски: %w", err)
+		return fmt.Errorf("synchronize tasks: %w", err)
 	}
 
 	return nil
@@ -207,7 +207,7 @@ func (r *taskRepository) GetByID(ctx context.Context, id uuid.UUID) (*model.Task
 		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("получить таск: %w", err)
+		return nil, fmt.Errorf("get task: %w", err)
 	}
 
 	return &task, nil
@@ -225,7 +225,7 @@ func (r *taskRepository) GetByIDForUpdate(ctx context.Context, id uuid.UUID) (*m
 		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("получить таск с блокировкой: %w", err)
+		return nil, fmt.Errorf("get task for update: %w", err)
 	}
 
 	return &task, nil
@@ -259,7 +259,7 @@ func (r *taskRepository) GetNewestAvailableForUser(
 		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("получить новую таску пользователя: %w", err)
+		return nil, fmt.Errorf("get newest task for user: %w", err)
 	}
 
 	return &task, nil
@@ -278,7 +278,7 @@ func (r *taskRepository) ListAvailable(ctx context.Context, now time.Time) ([]mo
 		Find(&tasks).
 		Error
 	if err != nil {
-		return nil, fmt.Errorf("получить доступные таски: %w", err)
+		return nil, fmt.Errorf("list available tasks: %w", err)
 	}
 
 	return tasks, nil
@@ -298,7 +298,7 @@ func (r *taskRepository) GetNextStartsAt(ctx context.Context, now time.Time) (*t
 		Scan(&result).
 		Error
 	if err != nil {
-		return nil, fmt.Errorf("получить время ближайшего таска: %w", err)
+		return nil, fmt.Errorf("get next task start time: %w", err)
 	}
 
 	return result.StartsAt, nil
@@ -317,7 +317,7 @@ func (r *taskRepository) ListUpcoming(ctx context.Context, now time.Time, limit 
 		Find(&tasks).
 		Error
 	if err != nil {
-		return nil, fmt.Errorf("получить предстоящие таски: %w", err)
+		return nil, fmt.Errorf("list upcoming tasks: %w", err)
 	}
 
 	return tasks, nil
@@ -331,7 +331,7 @@ func (r *taskRepository) UpdateCurrentPoints(ctx context.Context, id uuid.UUID, 
 		Where("id = ?", id).
 		Update("current_points", points)
 	if result.Error != nil {
-		return fmt.Errorf("обновить стоимость таска: %w", result.Error)
+		return fmt.Errorf("update task points: %w", result.Error)
 	}
 	if result.RowsAffected == 0 {
 		return repository.ErrNotFound

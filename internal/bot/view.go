@@ -82,7 +82,7 @@ func (b *Bot) sendText(ctx context.Context, chatID int64, text string, markup mo
 		Text:        text,
 		ReplyMarkup: markup,
 	}); err != nil {
-		b.logger.ErrorContext(ctx, "Failed to send Telegram message", "chat_id", chatID, "error", err)
+		b.logError(ctx, "Failed to send Telegram message", err, "chat_id", chatID)
 	}
 }
 
@@ -118,7 +118,7 @@ func (b *Bot) sendTaskContent(
 		Text:        text,
 		ReplyMarkup: markup,
 	}); err != nil {
-		return fmt.Errorf("отправить таск: %w", err)
+		return fmt.Errorf("send task: %w", err)
 	}
 
 	for _, file := range task.Files {
@@ -155,7 +155,7 @@ func (b *Bot) sendTaskFile(ctx context.Context, chatID int64, file dto.TaskFile)
 	} else {
 		storedFile, err := os.Open(file.StoragePath)
 		if err != nil {
-			return fmt.Errorf("прочитать файл таска %q: %w", file.FileName, err)
+			return fmt.Errorf("open task file %q: %w", file.FileName, err)
 		}
 		defer storedFile.Close()
 		input = &models.InputFileUpload{
@@ -169,7 +169,7 @@ func (b *Bot) sendTaskFile(ctx context.Context, chatID int64, file dto.TaskFile)
 		Document: input,
 		Caption:  file.FileName,
 	}); err != nil {
-		return fmt.Errorf("отправить файл таска %q: %w", file.FileName, err)
+		return fmt.Errorf("send task file %q: %w", file.FileName, err)
 	}
 
 	return nil

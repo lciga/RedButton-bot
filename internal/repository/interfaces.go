@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var ErrNotFound = errors.New("запись не найдена")
+var ErrNotFound = errors.New("record not found")
 
 // Интерфейс репозитория пользователей
 type UserRepository interface {

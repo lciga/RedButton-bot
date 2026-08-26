@@ -143,7 +143,7 @@ func (b *Bot) handleRatingCallback(ctx context.Context, client *telegram.Bot, qu
 		Text:        formatRating(*rating),
 		ReplyMarkup: ratingKeyboard(*rating),
 	}); err != nil {
-		b.handleError(ctx, query.From.ID, fmt.Errorf("обновить страницу рейтинга: %w", err))
+		b.handleError(ctx, query.From.ID, fmt.Errorf("update leaderboard page: %w", err))
 	}
 }
 
@@ -230,7 +230,7 @@ func (b *Bot) answerCallback(
 		Text:            text,
 		ShowAlert:       showAlert,
 	}); err != nil {
-		b.logger.ErrorContext(ctx, "Failed to answer callback query", "error", err)
+		b.logError(ctx, "Failed to answer callback query", err)
 	}
 }
 
@@ -290,12 +290,11 @@ func (b *Bot) authenticate(ctx context.Context, user *models.User) (*dto.User, e
 }
 
 func (b *Bot) handleError(ctx context.Context, chatID int64, err error) {
-	b.logger.ErrorContext(
+	b.logError(
 		ctx,
 		"Failed to handle Telegram update",
+		err,
 		"chat_id", chatID,
-		"error", err,
-		"error_chain", errorChain(err),
 	)
 
 	message := "Не удалось выполнить действие. Попробуйте позже."

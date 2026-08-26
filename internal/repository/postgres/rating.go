@@ -42,7 +42,7 @@ func (r *ratingRepository) AddSolution(ctx context.Context, userID uuid.UUID, po
 		Create(&rating).
 		Error
 	if err != nil {
-		return fmt.Errorf("обновить рейтинг: %w", err)
+		return fmt.Errorf("update rating: %w", err)
 	}
 
 	return nil
@@ -61,7 +61,7 @@ func (r *ratingRepository) GetByUserID(ctx context.Context, userID uuid.UUID) (*
 		return nil, repository.ErrNotFound
 	}
 	if err != nil {
-		return nil, fmt.Errorf("получить рейтинг пользователя: %w", err)
+		return nil, fmt.Errorf("get user rating: %w", err)
 	}
 
 	return &rating, nil
@@ -83,7 +83,7 @@ func (r *ratingRepository) List(
 		Offset(offset)
 	err := query.Find(&ratings).Error
 	if err != nil {
-		return nil, fmt.Errorf("получить таблицу рейтинга: %w", err)
+		return nil, fmt.Errorf("get leaderboard: %w", err)
 	}
 
 	return ratings, nil
@@ -94,7 +94,7 @@ func (r *ratingRepository) List(
 func (r *ratingRepository) Count(ctx context.Context, excludedTelegramIDs []int64) (int64, error) {
 	var count int64
 	if err := r.ratingQuery(ctx, excludedTelegramIDs).Count(&count).Error; err != nil {
-		return 0, fmt.Errorf("посчитать участников рейтинга: %w", err)
+		return 0, fmt.Errorf("count leaderboard participants: %w", err)
 	}
 
 	return count, nil
