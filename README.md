@@ -177,7 +177,7 @@ flag: redbutton{example_secret}
 maximum_points: 1000
 minimum_points: 100
 decay: 25
-starts_at: "2026-09-01T12:00:00+05:00"
+starts_at: "2026-09-01T12:00:00"
 file:
   path: files/web-intro.zip
   name: web-intro.zip
@@ -195,7 +195,7 @@ file:
 | `maximum_points` | Да | Максимальная стоимость, строго больше нуля. |
 | `minimum_points` | Да | Минимальная стоимость от нуля до `maximum_points`. |
 | `decay` | Да | Параметр распада, строго больше нуля. |
-| `starts_at` | Да | RFC 3339 с явным часовым поясом, например `2026-09-01T12:00:00+05:00`. |
+| `starts_at` | Да | Локальные дата и время в формате `YYYY-MM-DDTHH:MM:SS`; часовой пояс берётся из `TASK_TIMEZONE`. |
 | `file` | Нет | Одно вложение задачи. |
 | `file.path` | Да для файла | Абсолютный путь или путь относительно YAML-файла. |
 | `file.name` | Нет | Имя при отправке в Telegram. По умолчанию имя исходного файла. |
@@ -246,8 +246,9 @@ cp .env.example .env
 | `TELEGRAM_INIT_TIMEOUT` | Нет | `30s` | Таймаут первичного `getMe`. |
 | `DATABASE_DSN` | Да локально | — | DSN PostgreSQL. В Docker Compose формируется автоматически. |
 | `TASKS_DIRECTORY` | Нет | `tasks` | Директория YAML. В Compose переопределяется на `/app/tasks`. |
-| `TASK_START_DATE` | Да | — | Начало работы в формате `YYYY-MM-DDTHH:MM:SS`, интерпретируется как UTC+5. |
-| `TASK_END_DATE` | Да | — | Конец работы в том же формате и зоне UTC+5. |
+| `TASK_TIMEZONE` | Нет | `UTC+5` | Общий часовой пояс бота: UTC-смещение (`UTC+5`, `UTC-3`, `UTC+05:30`) или IANA-зона (`Asia/Yekaterinburg`). |
+| `TASK_START_DATE` | Да | — | Начало работы в формате `YYYY-MM-DDTHH:MM:SS` в часовом поясе `TASK_TIMEZONE`. |
+| `TASK_END_DATE` | Да | — | Конец работы в том же формате и часовом поясе. |
 | `TASK_EXPIRE` | Да | — | Время жизни задачи в формате Go duration: `30m`, `24h`, `48h`. |
 | `NOTIFICATION_INTERVAL` | Нет | `15s` | Интервал резервной проверки уведомлений. |
 | `ADMIN_TELEGRAM_IDS` | Нет | пустой список | Положительные Telegram ID через запятую. |
@@ -272,6 +273,7 @@ POSTGRES_USER=redbutton
 POSTGRES_PASSWORD=replace_with_strong_password
 POSTGRES_DB=redbutton
 
+TASK_TIMEZONE=UTC+5
 TASK_START_DATE=2026-09-01T00:00:00
 TASK_END_DATE=2026-09-07T00:00:00
 TASK_EXPIRE=24h
@@ -556,9 +558,3 @@ go fmt ./...
 ```bash
 go test ./... && go vet ./...
 ```
-
-## TODO
-
-- [ ] Добавить в конфиг возможность смены временной зоны
-- [ ] Добавить часовой пояс в конфигурацию бота
-- [ ] Проверить реализацию бага, кода за первое решение начисляется уже разложенное число очков. Возможно стоит из формулы убрать - 1

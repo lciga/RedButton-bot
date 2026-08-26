@@ -9,8 +9,9 @@ func TestCalculate(t *testing.T) {
 		want       int
 	}{
 		{name: "without solves", solveCount: 0, want: 100},
-		{name: "first solve", solveCount: 1, want: 97},
-		{name: "decay reached", solveCount: 5, want: 10},
+		{name: "first solve", solveCount: 1, want: 100},
+		{name: "second solve", solveCount: 2, want: 97},
+		{name: "decay reached", solveCount: 6, want: 10},
 		{name: "minimum points", solveCount: 200, want: 10},
 	}
 

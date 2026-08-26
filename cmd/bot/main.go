@@ -41,7 +41,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("load configuration: %w", err)
 	}
-	tasks, err := taskconfig.Load(cfg.TasksDirectory)
+	tasks, err := taskconfig.Load(cfg.TasksDirectory, cfg.TimeZone)
 	if err != nil {
 		return fmt.Errorf("load task configuration: %w", err)
 	}

@@ -32,6 +32,7 @@ func TestLoad(t *testing.T) {
 				TelegramInitTimeout:  30 * time.Second,
 				DatabaseDSN:          "host=localhost dbname=redbutton",
 				TasksDirectory:       "testdata/tasks",
+				TimeZone:             utcPlusFive,
 				BotStartDate:         time.Date(2026, time.September, 1, 0, 0, 0, 0, utcPlusFive),
 				BotEndDate:           time.Date(2026, time.September, 7, 0, 0, 0, 0, utcPlusFive),
 				TaskExpire:           24 * time.Hour,
@@ -41,6 +42,34 @@ func TestLoad(t *testing.T) {
 					987654321: {},
 				},
 			},
+		},
+		{
+			name: "custom timezone",
+			env: map[string]string{
+				"TASK_TIMEZONE":   "Europe/Moscow",
+				"TASK_START_DATE": "2026-09-01T00:00:00",
+				"TASK_END_DATE":   "2026-09-07T00:00:00",
+				"TASK_EXPIRE":     "24h",
+			},
+			createFile: true,
+			want: &Config{
+				TelegramInitTimeout:  30 * time.Second,
+				TasksDirectory:       "tasks",
+				TimeZone:             mustLoadLocation(t, "Europe/Moscow"),
+				BotStartDate:         time.Date(2026, time.September, 1, 0, 0, 0, 0, mustLoadLocation(t, "Europe/Moscow")),
+				BotEndDate:           time.Date(2026, time.September, 7, 0, 0, 0, 0, mustLoadLocation(t, "Europe/Moscow")),
+				TaskExpire:           24 * time.Hour,
+				NotificationInterval: 15 * time.Second,
+				AdminTelegramIDs:     map[int64]struct{}{},
+			},
+		},
+		{
+			name: "invalid timezone",
+			env: map[string]string{
+				"TASK_TIMEZONE": "not/a-timezone",
+			},
+			createFile: true,
+			wantErr:    true,
 		},
 		{
 			name: "invalid admin id",
@@ -100,5 +129,25 @@ func TestLoad(t *testing.T) {
 				t.Errorf("Load() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func mustLoadLocation(t *testing.T, name string) *time.Location {
+	t.Helper()
+	location, err := time.LoadLocation(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return location
+}
+
+func TestLoadTimeZoneUTCOffset(t *testing.T) {
+	location, err := loadTimeZone("UTC+05:30")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, offset := time.Date(2026, time.January, 1, 0, 0, 0, 0, location).Zone()
+	if offset != 5*60*60+30*60 {
+		t.Errorf("offset = %d, want %d", offset, 5*60*60+30*60)
 	}
 }

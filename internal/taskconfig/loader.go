@@ -37,7 +37,7 @@ type task struct {
 
 // Функция загрузки тасков из YAML-файлов.
 // Возвращает проверенные определения тасков и ошибку.
-func Load(directory string) ([]dto.TaskDefinition, error) {
+func Load(directory string, location *time.Location) ([]dto.TaskDefinition, error) {
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return nil, fmt.Errorf("read tasks directory: %w", err)
@@ -61,7 +61,7 @@ func Load(directory string) ([]dto.TaskDefinition, error) {
 	definitions := make([]dto.TaskDefinition, 0, len(paths))
 	slugs := make(map[string]string, len(paths))
 	for _, path := range paths {
-		definition, err := loadFile(path)
+		definition, err := loadFile(path, location)
 		if err != nil {
 			return nil, err
 		}
@@ -80,7 +80,7 @@ func Load(directory string) ([]dto.TaskDefinition, error) {
 	return definitions, nil
 }
 
-func loadFile(path string) (dto.TaskDefinition, error) {
+func loadFile(path string, location *time.Location) (dto.TaskDefinition, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return dto.TaskDefinition{}, fmt.Errorf("open YAML file %q: %w", path, err)
@@ -94,7 +94,7 @@ func loadFile(path string) (dto.TaskDefinition, error) {
 		return dto.TaskDefinition{}, fmt.Errorf("decode YAML file %q: %w", path, err)
 	}
 
-	definition, err := mapTask(path, source)
+	definition, err := mapTask(path, source, location)
 	if err != nil {
 		return dto.TaskDefinition{}, fmt.Errorf("validate YAML file %q: %w", path, err)
 	}
@@ -102,7 +102,7 @@ func loadFile(path string) (dto.TaskDefinition, error) {
 	return definition, nil
 }
 
-func mapTask(path string, source task) (dto.TaskDefinition, error) {
+func mapTask(path string, source task, location *time.Location) (dto.TaskDefinition, error) {
 	slug := strings.TrimSpace(source.Slug)
 	if slug == "" {
 		slug = strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))
@@ -129,7 +129,7 @@ func mapTask(path string, source task) (dto.TaskDefinition, error) {
 		return dto.TaskDefinition{}, errors.New("decay must be greater than zero")
 	}
 
-	startsAt, err := time.Parse(time.RFC3339, source.StartsAt)
+	startsAt, err := time.ParseInLocation("2006-01-02T15:04:05", source.StartsAt, location)
 	if err != nil {
 		return dto.TaskDefinition{}, fmt.Errorf("invalid task start time: %w", err)
 	}

@@ -12,7 +12,8 @@ func Calculate(initial, minimum, decay int, solveCount int64) int {
 	initialValue := float64(initial)
 	minimumValue := float64(minimum)
 	decayValue := float64(decay)
-	solves := float64(solveCount)
+	// Первое решение получает полную стоимость, распад начинается со второго.
+	solves := float64(max(solveCount-1, 0))
 	value := int(math.Ceil(
 		((minimumValue-initialValue)/(decayValue*decayValue))*(solves*solves) + initialValue,
 	))

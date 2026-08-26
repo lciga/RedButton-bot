@@ -7,7 +7,8 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	tasks, err := Load("../../tasks")
+	location := time.FixedZone("UTC+5", 5*60*60)
+	tasks, err := Load("../../tasks", location)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +30,7 @@ func TestLoad(t *testing.T) {
 	if task.MaximumPoints != 1000 || task.MinimumPoints != 100 || task.Decay != 25 {
 		t.Errorf("points configuration = %d/%d/%d, want 1000/100/25", task.MaximumPoints, task.MinimumPoints, task.Decay)
 	}
-	wantStartsAt := time.Date(2026, time.September, 1, 12, 0, 0, 0, time.FixedZone("UTC+5", 5*60*60))
+	wantStartsAt := time.Date(2026, time.September, 1, 12, 0, 0, 0, location)
 	if !task.StartsAt.Equal(wantStartsAt) {
 		t.Errorf("StartsAt = %v, want %v", task.StartsAt, wantStartsAt)
 	}

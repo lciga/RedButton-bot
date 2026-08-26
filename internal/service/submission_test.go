@@ -31,8 +31,9 @@ func TestCalculateNextPoints(t *testing.T) {
 		correctCount int64
 		want         int
 	}{
-		{name: "first solve", correctCount: 1, want: 97},
-		{name: "decay reached", correctCount: 5, want: 10},
+		{name: "first solve", correctCount: 1, want: 100},
+		{name: "second solve", correctCount: 2, want: 97},
+		{name: "decay reached", correctCount: 6, want: 10},
 		{name: "minimum points", correctCount: 200, want: 10},
 	}
 

@@ -157,7 +157,7 @@ func (s *SubmissionService) Submit(ctx context.Context, input dto.SubmitTask) (*
 		}
 		result.PointsAwarded = points
 
-		nextPoints := calculateNextPoints(task, correctCount+1)
+		nextPoints := calculateNextPoints(task, correctCount+2)
 		if nextPoints != task.CurrentPoints {
 			if err := repositories.Tasks.UpdateCurrentPoints(ctx, task.ID, nextPoints); err != nil {
 				return err

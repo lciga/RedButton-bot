@@ -75,7 +75,7 @@ func syncTask(tx *gorm.DB, task *model.Task) error {
 			task.InitialPoints,
 			task.MinimumPoints,
 			task.Decay,
-			int64(len(correctSubmissions)),
+			int64(len(correctSubmissions)+1),
 		)
 		scoringChanged := stored.InitialPoints != task.InitialPoints ||
 			stored.MinimumPoints != task.MinimumPoints ||
