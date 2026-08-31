@@ -38,6 +38,7 @@ type taskRepositoryStub struct {
 	next       func(context.Context, time.Time) (*time.Time, error)
 	upcoming   func(context.Context, time.Time, int) ([]model.Task, error)
 	available  func(context.Context, time.Time) ([]model.Task, error)
+	profile    func(context.Context, uuid.UUID, time.Time) ([]repository.ProfileTask, error)
 	update     func(context.Context, uuid.UUID, int) error
 }
 
@@ -83,6 +84,12 @@ func (s taskRepositoryStub) ListAvailable(ctx context.Context, now time.Time) ([
 	}
 	return s.available(ctx, now)
 }
+func (s taskRepositoryStub) ListForProfile(ctx context.Context, id uuid.UUID, now time.Time) ([]repository.ProfileTask, error) {
+	if s.profile == nil {
+		return nil, errUnexpectedCall
+	}
+	return s.profile(ctx, id, now)
+}
 func (s taskRepositoryStub) UpdateCurrentPoints(ctx context.Context, id uuid.UUID, points int) error {
 	if s.update == nil {
 		return errUnexpectedCall
@@ -94,6 +101,7 @@ type submissionRepositoryStub struct {
 	create func(context.Context, *model.Submission) error
 	has    func(context.Context, uuid.UUID, uuid.UUID) (bool, error)
 	count  func(context.Context, uuid.UUID) (int64, error)
+	last   func(context.Context, uuid.UUID, uuid.UUID) (*time.Time, error)
 }
 
 func (s submissionRepositoryStub) Create(ctx context.Context, value *model.Submission) error {
@@ -114,12 +122,19 @@ func (s submissionRepositoryStub) CountCorrect(ctx context.Context, taskID uuid.
 	}
 	return s.count(ctx, taskID)
 }
+func (s submissionRepositoryStub) GetLastSubmittedAt(ctx context.Context, userID, taskID uuid.UUID) (*time.Time, error) {
+	if s.last == nil {
+		return nil, nil
+	}
+	return s.last(ctx, userID, taskID)
+}
 
 type ratingRepositoryStub struct {
-	add   func(context.Context, uuid.UUID, int, time.Time) error
-	get   func(context.Context, uuid.UUID) (*model.Rating, error)
-	list  func(context.Context, int, int, []int64) ([]model.Rating, error)
-	count func(context.Context, []int64) (int64, error)
+	add      func(context.Context, uuid.UUID, int, time.Time) error
+	get      func(context.Context, uuid.UUID) (*model.Rating, error)
+	list     func(context.Context, int, int, []int64) ([]model.Rating, error)
+	count    func(context.Context, []int64) (int64, error)
+	position func(context.Context, uuid.UUID, []int64) (int, error)
 }
 
 func (s ratingRepositoryStub) AddSolution(ctx context.Context, id uuid.UUID, points int, at time.Time) error {
@@ -145,6 +160,12 @@ func (s ratingRepositoryStub) Count(ctx context.Context, excluded []int64) (int6
 		return 0, errUnexpectedCall
 	}
 	return s.count(ctx, excluded)
+}
+func (s ratingRepositoryStub) GetPosition(ctx context.Context, id uuid.UUID, excluded []int64) (int, error) {
+	if s.position == nil {
+		return 0, errUnexpectedCall
+	}
+	return s.position(ctx, id, excluded)
 }
 
 type notificationRepositoryStub struct {

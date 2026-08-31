@@ -284,6 +284,38 @@ func (r *taskRepository) ListAvailable(ctx context.Context, now time.Time) ([]mo
 	return tasks, nil
 }
 
+// Функция получения решённых и доступных сейчас тасков для профиля.
+func (r *taskRepository) ListForProfile(
+	ctx context.Context,
+	userID uuid.UUID,
+	now time.Time,
+) ([]repository.ProfileTask, error) {
+	var tasks []repository.ProfileTask
+	solvedExpression := `EXISTS (
+		SELECT 1 FROM submissions
+		WHERE submissions.task_id = tasks.id
+		  AND submissions.user_id = ?
+		  AND submissions.is_correct = TRUE
+	)`
+	err := r.db.WithContext(ctx).
+		Model(&model.Task{}).
+		Select("tasks.id, tasks.title, "+solvedExpression+" AS solved", userID).
+		Where(
+			"("+solvedExpression+") OR (tasks.is_active = ? AND tasks.starts_at <= ? AND (tasks.ends_at IS NULL OR tasks.ends_at > ?))",
+			userID,
+			true,
+			now,
+			now,
+		).
+		Order("solved DESC, tasks.starts_at ASC, tasks.id ASC").
+		Scan(&tasks).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("list profile tasks: %w", err)
+	}
+	return tasks, nil
+}
+
 // Функция получения времени открытия ближайшего таска.
 // Возвращает nil при отсутствии предстоящих тасков.
 func (r *taskRepository) GetNextStartsAt(ctx context.Context, now time.Time) (*time.Time, error) {

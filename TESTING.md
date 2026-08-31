@@ -8,7 +8,7 @@
 | Race | конкурентный доступ и гонки данных | `make test-race` |
 | Smoke | создание Telegram-клиента и запрос `getMe` через in-memory transport | `make test-smoke` |
 | Integration | миграции, PostgreSQL-репозитории, запросы уведомлений и rollback транзакции | `make test-integration` |
-| E2E | путь `YAML → sync → user → wrong flag → solve → scoring → rating → notification` | `make test-e2e` |
+| E2E | путь `YAML → sync → user → wrong flag → solve → scoring → profile → rating → notification` | `make test-e2e` |
 | Image smoke | сборку production Docker image и запуск под непривилегированным пользователем | выполняется в CI и `make test-full` |
 
 ## Быстрый цикл разработки

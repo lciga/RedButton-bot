@@ -100,6 +100,35 @@ func (r *ratingRepository) Count(ctx context.Context, excludedTelegramIDs []int6
 	return count, nil
 }
 
+// Функция получения текущего места пользователя в рейтинге.
+func (r *ratingRepository) GetPosition(
+	ctx context.Context,
+	userID uuid.UUID,
+	excludedTelegramIDs []int64,
+) (int, error) {
+	rating, err := r.GetByUserID(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	for _, telegramID := range excludedTelegramIDs {
+		if rating.User.TelegramUserID == telegramID {
+			return 0, repository.ErrNotFound
+		}
+	}
+
+	query := r.ratingQuery(ctx, excludedTelegramIDs).
+		Where(`
+			ratings.total_points > ?
+			OR (ratings.total_points = ? AND ratings.last_solved_at < ?)
+			OR (ratings.total_points = ? AND ratings.last_solved_at = ? AND ratings.user_id < ?)
+		`, rating.TotalPoints, rating.TotalPoints, rating.LastSolvedAt, rating.TotalPoints, rating.LastSolvedAt, rating.UserID)
+	var ahead int64
+	if err := query.Count(&ahead).Error; err != nil {
+		return 0, fmt.Errorf("get leaderboard position: %w", err)
+	}
+	return int(ahead) + 1, nil
+}
+
 func (r *ratingRepository) ratingQuery(ctx context.Context, excludedTelegramIDs []int64) *gorm.DB {
 	query := r.db.WithContext(ctx).
 		Model(&model.Rating{}).

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"RedButton-bot/internal/dto"
+	"github.com/go-telegram/bot/models"
 	"github.com/google/uuid"
 )
 
@@ -17,6 +18,9 @@ func TestFormatRating(t *testing.T) {
 		if !strings.Contains(got, want) {
 			t.Errorf("formatRating() = %q, missing %q", got, want)
 		}
+	}
+	if strings.Contains(got, "тасок") {
+		t.Errorf("rating must not display solved task count: %q", got)
 	}
 	if formatRating(dto.RatingPage{}) != "Рейтинг пока пуст." {
 		t.Error("empty rating text is incorrect")
@@ -45,7 +49,31 @@ func TestKeyboardsAndBotState(t *testing.T) {
 	if _, ok := bot.getPendingTask(7); ok {
 		t.Fatal("pending task was not deleted")
 	}
-	if len(bot.mainMenu(7).Keyboard) != 2 || len(bot.mainMenu(8).Keyboard) != 1 {
+	if len(bot.mainMenu(7).Keyboard) != 3 || len(bot.mainMenu(8).Keyboard) != 2 {
 		t.Fatal("admin menu visibility is incorrect")
+	}
+}
+
+func TestFormatProfileAndKeyboard(t *testing.T) {
+	solvedID, activeID := uuid.New(), uuid.New()
+	profile := dto.Profile{
+		TotalPoints: 120,
+		Position:    3,
+		Tasks: []dto.ProfileTask{
+			{ID: solvedID, Title: "Solved", Solved: true},
+			{ID: activeID, Title: "Active"},
+		},
+	}
+	text := formatProfile(profile)
+	if !strings.Contains(text, "Очки: 120") || !strings.Contains(text, "Место: 3") {
+		t.Fatalf("profile text = %q", text)
+	}
+	markup, ok := profileKeyboard(profile).(*models.InlineKeyboardMarkup)
+	if !ok || len(markup.InlineKeyboard) != 2 {
+		t.Fatalf("profile keyboard = %#v", markup)
+	}
+	if markup.InlineKeyboard[0][0].CallbackData != profileSolvedPrefix+solvedID.String() ||
+		markup.InlineKeyboard[1][0].CallbackData != profileTaskPrefix+activeID.String() {
+		t.Fatalf("unexpected profile callbacks: %#v", markup)
 	}
 }

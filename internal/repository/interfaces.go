@@ -26,6 +26,7 @@ type TaskRepository interface {
 	GetNextStartsAt(ctx context.Context, now time.Time) (*time.Time, error)
 	ListUpcoming(ctx context.Context, now time.Time, limit int) ([]model.Task, error)
 	ListAvailable(ctx context.Context, now time.Time) ([]model.Task, error)
+	ListForProfile(ctx context.Context, userID uuid.UUID, now time.Time) ([]ProfileTask, error)
 	UpdateCurrentPoints(ctx context.Context, id uuid.UUID, points int) error
 }
 
@@ -34,6 +35,7 @@ type SubmissionRepository interface {
 	Create(ctx context.Context, submission *model.Submission) error
 	HasCorrect(ctx context.Context, userID, taskID uuid.UUID) (bool, error)
 	CountCorrect(ctx context.Context, taskID uuid.UUID) (int64, error)
+	GetLastSubmittedAt(ctx context.Context, userID, taskID uuid.UUID) (*time.Time, error)
 }
 
 // Интерфейс репозитория рейтинга
@@ -42,6 +44,14 @@ type RatingRepository interface {
 	GetByUserID(ctx context.Context, userID uuid.UUID) (*model.Rating, error)
 	List(ctx context.Context, limit, offset int, excludedTelegramIDs []int64) ([]model.Rating, error)
 	Count(ctx context.Context, excludedTelegramIDs []int64) (int64, error)
+	GetPosition(ctx context.Context, userID uuid.UUID, excludedTelegramIDs []int64) (int, error)
+}
+
+// Структура задачи, отображаемой в профиле пользователя.
+type ProfileTask struct {
+	ID     uuid.UUID
+	Title  string
+	Solved bool
 }
 
 // Структура данных ожидающего уведомления

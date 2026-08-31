@@ -58,7 +58,7 @@ func TestSubmitCorrectSolution(t *testing.T) {
 			get: func(context.Context, uuid.UUID) (*model.Rating, error) { return &model.Rating{TotalPoints: 100}, nil },
 		},
 	}
-	service := NewSubmissionService(transactorStub{repositories: repositories}, nil, nil)
+	service := NewSubmissionService(transactorStub{repositories: repositories}, nil, nil, 5*time.Second)
 	service.now = func() time.Time { return now }
 	result, err := service.Submit(context.Background(), dto.SubmitTask{TelegramUserID: 42, TaskID: taskID, Flag: "correct"})
 	if err != nil {
@@ -70,7 +70,7 @@ func TestSubmitCorrectSolution(t *testing.T) {
 }
 
 func TestSubmitValidationUnavailableAndIgnored(t *testing.T) {
-	service := NewSubmissionService(transactorStub{}, nil, nil)
+	service := NewSubmissionService(transactorStub{}, nil, nil, 5*time.Second)
 	if _, err := service.Submit(context.Background(), dto.SubmitTask{}); !errors.Is(err, ErrInvalidInput) {
 		t.Fatalf("error = %v", err)
 	}
@@ -81,7 +81,7 @@ func TestSubmitValidationUnavailableAndIgnored(t *testing.T) {
 			return &model.User{ID: userID, IsActive: false}, nil
 		}},
 	}
-	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, nil)
+	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, nil, 5*time.Second)
 	if _, err := service.Submit(context.Background(), dto.SubmitTask{TelegramUserID: 1, TaskID: taskID, Flag: "x"}); !errors.Is(err, ErrUserInactive) {
 		t.Fatalf("error = %v", err)
 	}
@@ -91,7 +91,7 @@ func TestSubmitValidationUnavailableAndIgnored(t *testing.T) {
 	repositories.Tasks = taskRepositoryStub{getForLock: func(context.Context, uuid.UUID) (*model.Task, error) {
 		return &model.Task{ID: taskID, StartsAt: now.Add(time.Hour), IsActive: true}, nil
 	}}
-	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, nil)
+	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, nil, 5*time.Second)
 	service.now = func() time.Time { return now }
 	if _, err := service.Submit(context.Background(), dto.SubmitTask{TelegramUserID: 1, TaskID: taskID, Flag: "x"}); !errors.Is(err, ErrTaskUnavailable) {
 		t.Fatalf("error = %v", err)
@@ -100,11 +100,39 @@ func TestSubmitValidationUnavailableAndIgnored(t *testing.T) {
 	repositories.Tasks = taskRepositoryStub{getForLock: func(context.Context, uuid.UUID) (*model.Task, error) {
 		return &model.Task{ID: taskID, FlagHash: HashFlag("correct"), StartsAt: now.Add(-time.Hour), IsActive: true}, nil
 	}}
-	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, map[int64]struct{}{1: {}})
+	service = NewSubmissionService(transactorStub{repositories: repositories}, nil, map[int64]struct{}{1: {}}, 5*time.Second)
 	service.now = func() time.Time { return now }
 	result, err := service.Submit(context.Background(), dto.SubmitTask{TelegramUserID: 1, TaskID: taskID, Flag: "correct"})
 	if err != nil || !result.Ignored || !result.Correct {
 		t.Fatalf("error=%v result=%#v", err, result)
+	}
+}
+
+func TestSubmitRateLimit(t *testing.T) {
+	userID, taskID := uuid.New(), uuid.New()
+	now := time.Now()
+	lastAttempt := now.Add(-2 * time.Second)
+	repositories := repository.Repositories{
+		Users: userRepositoryStub{get: func(context.Context, int64) (*model.User, error) {
+			return &model.User{ID: userID, IsActive: true}, nil
+		}},
+		Tasks: taskRepositoryStub{getForLock: func(context.Context, uuid.UUID) (*model.Task, error) {
+			return &model.Task{ID: taskID, StartsAt: now.Add(-time.Hour), IsActive: true}, nil
+		}},
+		Submissions: submissionRepositoryStub{
+			has:  func(context.Context, uuid.UUID, uuid.UUID) (bool, error) { return false, nil },
+			last: func(context.Context, uuid.UUID, uuid.UUID) (*time.Time, error) { return &lastAttempt, nil },
+		},
+	}
+	service := NewSubmissionService(transactorStub{repositories: repositories}, nil, nil, 5*time.Second)
+	service.now = func() time.Time { return now }
+	_, err := service.Submit(context.Background(), dto.SubmitTask{TelegramUserID: 42, TaskID: taskID, Flag: "guess"})
+	var rateLimitError *RateLimitError
+	if !errors.As(err, &rateLimitError) || !errors.Is(err, ErrRateLimited) {
+		t.Fatalf("error = %v, want RateLimitError", err)
+	}
+	if rateLimitError.RetryAfter != 3*time.Second {
+		t.Fatalf("retry after = %v, want 3s", rateLimitError.RetryAfter)
 	}
 }
 

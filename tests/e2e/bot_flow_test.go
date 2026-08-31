@@ -21,7 +21,7 @@ func TestCompleteParticipantFlow(t *testing.T) {
 	db := testsupport.PostgreSQL(t)
 	store := postgresrepository.New(db)
 	repositories := store.Repositories()
-	services := service.New(repositories, store, nil, nil)
+	services := service.New(repositories, store, nil, nil, time.Nanosecond)
 	ctx := context.Background()
 	now := time.Now().UTC().Truncate(time.Second)
 	location := time.FixedZone("UTC+5", 5*60*60)
@@ -67,6 +67,10 @@ func TestCompleteParticipantFlow(t *testing.T) {
 	second, err := services.Submissions.Submit(ctx, dto.SubmitTask{TelegramUserID: 1002, TaskID: task.ID, Flag: "redbutton{e2e}"})
 	if err != nil || second.PointsAwarded != 97 {
 		t.Fatalf("second result=%#v error=%v", second, err)
+	}
+	profile, err := services.Profiles.Get(ctx, 1001)
+	if err != nil || profile.TotalPoints != 100 || profile.Position != 1 || len(profile.Tasks) != 1 || !profile.Tasks[0].Solved {
+		t.Fatalf("profile=%#v error=%v", profile, err)
 	}
 
 	leaderboard, err := services.Ratings.GetLeaderboardPage(ctx, 1, 10)

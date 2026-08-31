@@ -20,9 +20,12 @@ import (
 const (
 	buttonNewTask       = "🧩 Новая таска"
 	buttonRating        = "🏆 Рейтинг"
+	buttonProfile       = "👤 Профиль"
 	buttonAdmin         = "⚙️ Админка"
 	solvePrefix         = "solve:"
 	ratingPrefix        = "rating:"
+	profileTaskPrefix   = "profile:task:"
+	profileSolvedPrefix = "profile:solved:"
 	adminPreviewPrefix  = "admin:preview:"
 	telegramPollTimeout = time.Minute
 	telegramHTTPTimeout = 90 * time.Second

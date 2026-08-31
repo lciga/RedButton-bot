@@ -15,8 +15,9 @@ func (b *Bot) mainMenu(telegramUserID int64) *models.ReplyKeyboardMarkup {
 	keyboard := [][]models.KeyboardButton{
 		{
 			{Text: buttonNewTask},
-			{Text: buttonRating},
+			{Text: buttonProfile},
 		},
+		{{Text: buttonRating}},
 	}
 	if b.isAdmin(telegramUserID) {
 		keyboard = append(keyboard, []models.KeyboardButton{{Text: buttonAdmin}})
@@ -27,6 +28,35 @@ func (b *Bot) mainMenu(telegramUserID int64) *models.ReplyKeyboardMarkup {
 		IsPersistent:   true,
 		ResizeKeyboard: true,
 	}
+}
+
+func profileKeyboard(profile dto.Profile) models.ReplyMarkup {
+	if len(profile.Tasks) == 0 {
+		return nil
+	}
+	keyboard := make([][]models.InlineKeyboardButton, 0, len(profile.Tasks))
+	for _, task := range profile.Tasks {
+		text := "🧩 " + task.Title
+		callback := profileTaskPrefix + task.ID.String()
+		if task.Solved {
+			text = "✅ " + task.Title
+			callback = profileSolvedPrefix + task.ID.String()
+		}
+		keyboard = append(keyboard, []models.InlineKeyboardButton{{Text: text, CallbackData: callback}})
+	}
+	return &models.InlineKeyboardMarkup{InlineKeyboard: keyboard}
+}
+
+func formatProfile(profile dto.Profile) string {
+	position := "—"
+	if profile.Position > 0 {
+		position = fmt.Sprint(profile.Position)
+	}
+	result := fmt.Sprintf("👤 Профиль\n\nОчки: %d\nМесто: %s", profile.TotalPoints, position)
+	if len(profile.Tasks) == 0 {
+		return result + "\n\nДоступных и решённых тасков пока нет."
+	}
+	return result + "\n\n✅ — решено\n🧩 — доступно для решения"
 }
 
 func upcomingTasksKeyboard(tasks []dto.Task) *models.InlineKeyboardMarkup {
@@ -185,11 +215,10 @@ func formatRating(page dto.RatingPage) string {
 	for _, item := range page.Items {
 		fmt.Fprintf(
 			&result,
-			"%d. %s — %d очков (%d тасок)\n",
+			"%d. %s — %d очков\n",
 			item.Position,
 			formatUserName(item),
 			item.TotalPoints,
-			item.SolvedTasksCount,
 		)
 	}
 	fmt.Fprintf(&result, "\nСтраница %d из %d", page.Page, page.TotalPages)

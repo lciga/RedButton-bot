@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"RedButton-bot/internal/database/model"
 	"github.com/google/uuid"
@@ -54,4 +55,24 @@ func (r *submissionRepository) CountCorrect(ctx context.Context, taskID uuid.UUI
 	}
 
 	return count, nil
+}
+
+// Функция получения времени последней попытки пользователя по таску.
+func (r *submissionRepository) GetLastSubmittedAt(
+	ctx context.Context,
+	userID, taskID uuid.UUID,
+) (*time.Time, error) {
+	var result struct {
+		SubmittedAt *time.Time
+	}
+	err := r.db.WithContext(ctx).
+		Model(&model.Submission{}).
+		Select("MAX(submitted_at) AS submitted_at").
+		Where("user_id = ? AND task_id = ?", userID, taskID).
+		Scan(&result).
+		Error
+	if err != nil {
+		return nil, fmt.Errorf("get last submission time: %w", err)
+	}
+	return result.SubmittedAt, nil
 }

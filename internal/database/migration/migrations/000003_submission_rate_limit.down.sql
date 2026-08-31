@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_submissions_user_task_submitted_at;

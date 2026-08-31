@@ -46,6 +46,8 @@ func (b *Bot) handleUpdate(ctx context.Context, client *telegram.Bot, update *mo
 		b.handleNewTask(ctx, update.Message.Chat.ID, update.Message.From.ID)
 	case buttonRating:
 		b.handleRating(ctx, update.Message.Chat.ID, 1)
+	case buttonProfile:
+		b.handleProfile(ctx, update.Message.Chat.ID, update.Message.From.ID)
 	case buttonAdmin:
 		b.handleAdmin(ctx, update.Message.Chat.ID, update.Message.From.ID)
 	default:
@@ -112,10 +114,40 @@ func (b *Bot) handleCallback(ctx context.Context, client *telegram.Bot, update *
 		b.handleSolveCallback(ctx, client, query)
 	case strings.HasPrefix(query.Data, ratingPrefix):
 		b.handleRatingCallback(ctx, client, query)
+	case strings.HasPrefix(query.Data, profileTaskPrefix):
+		b.handleProfileTaskCallback(ctx, client, query)
+	case strings.HasPrefix(query.Data, profileSolvedPrefix):
+		b.answerCallback(ctx, client, query.ID, "Этот таск уже решён.", false)
 	case strings.HasPrefix(query.Data, adminPreviewPrefix):
 		b.handleAdminPreviewCallback(ctx, client, query)
 	default:
 		b.answerCallback(ctx, client, query.ID, "", false)
+	}
+}
+
+func (b *Bot) handleProfile(ctx context.Context, chatID, telegramUserID int64) {
+	profile, err := b.services.Profiles.Get(ctx, telegramUserID)
+	if err != nil {
+		b.handleError(ctx, chatID, err)
+		return
+	}
+	b.sendText(ctx, chatID, formatProfile(*profile), profileKeyboard(*profile))
+}
+
+func (b *Bot) handleProfileTaskCallback(ctx context.Context, client *telegram.Bot, query *models.CallbackQuery) {
+	taskID, err := uuid.Parse(strings.TrimPrefix(query.Data, profileTaskPrefix))
+	if err != nil {
+		b.answerCallback(ctx, client, query.ID, "Некорректный таск.", true)
+		return
+	}
+	task, err := b.services.Tasks.GetByID(ctx, taskID)
+	if err != nil {
+		b.answerCallback(ctx, client, query.ID, "Таск сейчас недоступен.", true)
+		return
+	}
+	b.answerCallback(ctx, client, query.ID, "", false)
+	if err := b.sendTask(ctx, query.From.ID, *task, false); err != nil {
+		b.handleError(ctx, query.From.ID, err)
 	}
 }
 
@@ -290,14 +322,17 @@ func (b *Bot) authenticate(ctx context.Context, user *models.User) (*dto.User, e
 }
 
 func (b *Bot) handleError(ctx context.Context, chatID int64, err error) {
-	b.logError(
-		ctx,
-		"Failed to handle Telegram update",
-		err,
-		"chat_id", chatID,
-	)
+	if !errors.Is(err, service.ErrRateLimited) {
+		b.logError(
+			ctx,
+			"Failed to handle Telegram update",
+			err,
+			"chat_id", chatID,
+		)
+	}
 
 	message := "Не удалось выполнить действие. Попробуйте позже."
+	var rateLimitError *service.RateLimitError
 	switch {
 	case errors.Is(err, repository.ErrNotFound):
 		message = "Запрошенные данные не найдены."
@@ -307,6 +342,9 @@ func (b *Bot) handleError(ctx context.Context, chatID int64, err error) {
 		message = "Этот таск сейчас недоступен."
 	case errors.Is(err, service.ErrUserInactive):
 		message = "Ваш аккаунт заблокирован."
+	case errors.As(err, &rateLimitError):
+		retryAfter := ((rateLimitError.RetryAfter + time.Second - 1) / time.Second) * time.Second
+		message = fmt.Sprintf("Слишком много попыток. Попробуйте снова через %s.", retryAfter)
 	}
 
 	b.sendText(ctx, chatID, message, b.mainMenu(chatID))

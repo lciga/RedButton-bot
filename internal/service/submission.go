@@ -47,6 +47,7 @@ type SubmissionService struct {
 	transactor          repository.Transactor
 	verifier            FlagVerifier
 	now                 func() time.Time
+	submissionInterval  time.Duration
 	excludedTelegramIDs map[int64]struct{}
 }
 
@@ -56,6 +57,7 @@ func NewSubmissionService(
 	transactor repository.Transactor,
 	verifier FlagVerifier,
 	excludedTelegramIDs map[int64]struct{},
+	submissionInterval time.Duration,
 ) *SubmissionService {
 	if verifier == nil {
 		verifier = SHA256FlagVerifier{}
@@ -70,6 +72,7 @@ func NewSubmissionService(
 		transactor:          transactor,
 		verifier:            verifier,
 		now:                 time.Now,
+		submissionInterval:  submissionInterval,
 		excludedTelegramIDs: excluded,
 	}
 }
@@ -101,8 +104,8 @@ func (s *SubmissionService) Submit(ctx context.Context, input dto.SubmitTask) (*
 			return ErrTaskUnavailable
 		}
 
-		correct := s.verifier.Verify(input.Flag, task.FlagHash)
 		if _, excluded := s.excludedTelegramIDs[input.TelegramUserID]; excluded {
+			correct := s.verifier.Verify(input.Flag, task.FlagHash)
 			result.Correct = correct
 			result.Ignored = true
 			result.CurrentPoints = task.CurrentPoints
@@ -118,6 +121,18 @@ func (s *SubmissionService) Submit(ctx context.Context, input dto.SubmitTask) (*
 			result.CurrentPoints = task.CurrentPoints
 			return nil
 		}
+		lastSubmittedAt, err := repositories.Submissions.GetLastSubmittedAt(ctx, user.ID, task.ID)
+		if err != nil {
+			return err
+		}
+		if lastSubmittedAt != nil {
+			allowedAt := lastSubmittedAt.Add(s.submissionInterval)
+			if now.Before(allowedAt) {
+				return &RateLimitError{RetryAfter: allowedAt.Sub(now)}
+			}
+		}
+
+		correct := s.verifier.Verify(input.Flag, task.FlagHash)
 
 		correctCount, err := repositories.Submissions.CountCorrect(ctx, task.ID)
 		if err != nil {

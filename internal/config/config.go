@@ -17,16 +17,17 @@ var utcOffsetPattern = regexp.MustCompile(`^UTC([+-])(\d{1,2})(?::?(\d{2}))?$`)
 
 // Структура конфига бота
 type Config struct {
-	TelegramBotToken     string             // Токен бота
-	TelegramInitTimeout  time.Duration      // Таймаут проверки подключения к Telegram
-	DatabaseDSN          string             // Строка подключения к PostgreSQL
-	TasksDirectory       string             // Путь к директории с YAML-файлами тасков
-	TimeZone             *time.Location     // Часовой пояс времени работы бота
-	BotStartDate         time.Time          // Дата и время начала работы бота
-	BotEndDate           time.Time          // Дата и время окончания работы бота
-	TaskExpire           time.Duration      // Время жизни тасок
-	NotificationInterval time.Duration      // Интервал проверки новых тасков
-	AdminTelegramIDs     map[int64]struct{} // Идентификаторы администраторов в Telegram
+	TelegramBotToken       string             // Токен бота
+	TelegramInitTimeout    time.Duration      // Таймаут проверки подключения к Telegram
+	FlagSubmissionInterval time.Duration      // Минимальный интервал между попытками сдачи флага
+	DatabaseDSN            string             // Строка подключения к PostgreSQL
+	TasksDirectory         string             // Путь к директории с YAML-файлами тасков
+	TimeZone               *time.Location     // Часовой пояс времени работы бота
+	BotStartDate           time.Time          // Дата и время начала работы бота
+	BotEndDate             time.Time          // Дата и время окончания работы бота
+	TaskExpire             time.Duration      // Время жизни тасок
+	NotificationInterval   time.Duration      // Интервал проверки новых тасков
+	AdminTelegramIDs       map[int64]struct{} // Идентификаторы администраторов в Telegram
 }
 
 // Функция загрузки конфига.
@@ -49,6 +50,16 @@ func Load() (*Config, error) {
 	}
 	if cfg.TelegramInitTimeout <= 0 {
 		return nil, fmt.Errorf("TELEGRAM_INIT_TIMEOUT must be greater than zero")
+	}
+	cfg.FlagSubmissionInterval = 5 * time.Second
+	if value := os.Getenv("FLAG_SUBMISSION_INTERVAL"); value != "" {
+		cfg.FlagSubmissionInterval, err = time.ParseDuration(value)
+		if err != nil {
+			return nil, fmt.Errorf("parse FLAG_SUBMISSION_INTERVAL: %w", err)
+		}
+	}
+	if cfg.FlagSubmissionInterval <= 0 {
+		return nil, fmt.Errorf("FLAG_SUBMISSION_INTERVAL must be greater than zero")
 	}
 	cfg.DatabaseDSN = os.Getenv("DATABASE_DSN")
 	cfg.TasksDirectory = os.Getenv("TASKS_DIRECTORY")

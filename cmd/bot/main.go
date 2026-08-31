@@ -65,7 +65,7 @@ func run(ctx context.Context, logger *slog.Logger) error {
 	}
 
 	store := postgresrepository.New(db)
-	services := service.New(store.Repositories(), store, nil, cfg.AdminTelegramIDs)
+	services := service.New(store.Repositories(), store, nil, cfg.AdminTelegramIDs, cfg.FlagSubmissionInterval)
 	if err := services.Tasks.Sync(
 		ctx,
 		tasks,
